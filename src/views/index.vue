@@ -29,6 +29,7 @@
     .index .ivu-row-flex {
         height: 100%;
     }
+    
 </style>
 <template>
     <div class="index">

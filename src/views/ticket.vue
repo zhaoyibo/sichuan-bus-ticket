@@ -1,4 +1,8 @@
 <style scoped>
+.demo-table-info-cell-age span:before {
+    content: "hah" !important;
+}
+
 .index {
     text-align: start;
 }
@@ -48,7 +52,7 @@ legend {
 <template>
     <div class="index">
         <row type="flex" justify="center" align="top">
-            <i-col :xs="22" :sm="20" :md="14" :lg="14">
+            <i-col :xs="22" :sm="20" :md="15" :lg="15">
                 <tabs value="buy-ticket">
                     <tab-pane label="开始抢票" name="buy-ticket">
                         <i-form ref="formModel" :model="formModel" :rules="ruleValidate" inline>
@@ -68,7 +72,7 @@ legend {
                                     <date-picker v-model="formModel.ticket.date" type="date" placeholder="选择日期" :options="afterToday" @on-change="pickDate"></date-picker>
                                 </form-item>
 
-                                <i-table v-show="tableshow" :height="tableheight" size="small" highlight-row :columns="flights.columns" :data="flights.data"></i-table>
+                                <i-table v-show="tableshow" :height="tableheight" size="small" highlight-row :columns="flights.columns" :data="flights.data" @on-current-change="tablechange" no-data-text="没有班次"></i-table>
                             </fieldset>
 
                             <fieldset>
@@ -96,8 +100,8 @@ legend {
                                             <i-input type="text" v-model="item.id" placeholder="身份证号"></i-input>
                                         </i-col>
                                         <!-- <i-col :xs="2" :md="{span: 2, offset: 1}">
-                                                                                                                                            <i-button class="trash-btn" type="ghost" @click="handleRemove(index)" icon="trash-a"></i-button>
-                                                                                                                                        </i-col> -->
+                                                                                                                                                                                                                                            <i-button class="trash-btn" type="ghost" @click="handleRemove(index)" icon="trash-a"></i-button>
+                                                                                                                                                                                                                                        </i-col> -->
                                     </row>
                                 </form-item>
                                 <i-button type="ghost" style="display: block;" @click="handleAdd" icon="plus-round">新增乘客</i-button>
@@ -125,17 +129,16 @@ import Util from '../libs/util';
 export default {
     data() {
         return {
-            ok1: false,
-            ok2: false,
             t: undefined,
             loading: false,
             disabled: true,
             tableshow: false,
             tableheight: "",
+            ok: false,
             fcs: [{ id: 255, jianpin: "cds", name: "成都市", pinyin: "chengdushi" }],
             tcs: [],
             flights: {
-                columns: [{ title: '乘车车站', key: 'CarryStaName' }, { title: '发车时间', key: 'DrvTime' }, { title: '里程', key: 'Mile' }, { title: '车型', key: 'BusTypeName' }, { title: '票价', key: 'FullPrice' }],
+                columns: [{ title: '乘车车站', key: 'CarryStaName' }, { title: '终点站', key: 'EndStaName' }, { title: '发车时间', key: 'DrvTime' }, { title: '里程', key: 'Mile' }, { title: '车型', key: 'BusTypeName' }, { title: '票价', key: 'FullPrice' }],
                 data: []
             },
             afterToday: {
@@ -147,7 +150,9 @@ export default {
                 ticket: {
                     idx1: "",
                     idx2: "",
-                    date: ''
+                    date: '',
+                    schId: '',
+                    dateStr: ''
                 },
                 contact: {
                     name: "",
@@ -183,14 +188,15 @@ export default {
             if (query.length > 0) {
                 this.loading = true;
             } else {
-                if (this.t !== undefined) {
+                if (this.t) {
                     clearTimeout(this.t)
                 }
                 this.fcs = []
                 this.loading = false;
+                this.clear1()
                 return
             }
-            if (this.t !== undefined) {
+            if (this.t) {
                 clearTimeout(this.t)
             }
             this.t = setTimeout(() => {
@@ -208,14 +214,15 @@ export default {
             if (query.length > 0) {
                 this.loading = true;
             } else {
-                if (this.t !== undefined) {
+                if (this.t) {
                     clearTimeout(this.t)
                 }
                 this.tcs = []
                 this.loading = false;
+                this.clear2()
                 return
             }
-            if (this.t !== undefined) {
+            if (this.t) {
                 clearTimeout(this.t)
             }
             this.t = setTimeout(() => {
@@ -230,48 +237,103 @@ export default {
             }, 500)
         },
         handleSelect1(val) {
-            var idx = parseInt(val)
-            if (!isNaN(idx)) {
-                this.ok1 = true
-                this.disabled = false
-                console.log(this.formModel)
-            } else {
-                this.clear1()
-            }
+            this.disabled = false
         },
         handleSelect2(val) {
-            var idx = parseInt(val)
-            if (!isNaN(idx)) {
-                this.ok2 = true
-            } else {
-                this.clear2()
-            }
+            this.findFlight()
         },
-        pickDate(date) {
-            if (date === undefined || date == '') {
+        pickDate(str) {
+            if (!str) {
                 this.tableshow = false
                 this.tableheight = ''
+                this.formModel.ticket.schId = ''
+                this.flights.data = []
                 return
             }
-            var fromCity = this.fcs[this.formModel.ticket.idx1]
-            var url = "/ticket/flight"
+            this.formModel.ticket.dateStr = str
+            this.findFlight(str)
+        },
+        findFlight(str) {
+            str = str || this.formModel.ticket.dateStr
+            if (!str) {
+                return
+            }
+            var fromCity = this.fcs[this.formModel.ticket.idx1], toCity = this.tcs[this.formModel.ticket.idx2]
+            if (!fromCity || !toCity) {
+                return
+            }
 
-            Util.ajax(url, { params: { to: this.tcs[this.formModel.ticket.idx2].name, id: fromCity.id, from: fromCity.name, date: date } })
-                .then(resp => {
-                    var data = resp.data.Data
-                    for (let x of data) {
-                        x.DrvTime = x.DrvDateTime.substr(11, 5)
-                    }
-                    this.flights.data = resp.data.Data
-                    this.tableshow = true
-                    if (this.flights.data.length > 3) {
-                        this.tableheight = 175
+            let _this = this
+            let prefun = function() {
+                return new Promise(function(resolve, reject) {
+                    _this.doFindFlight(fromCity.name, fromCity.id, toCity.name, str, resolve)
+                })
+            }
+
+            let nextfun = function(prevalue) {
+                return new Promise(function(resolve, reject) {
+                    if (!prevalue) {
+                        var now = new Date()
+                        now.setDate(now.getDate() + 1)
+                        var date = now.toISOString().substr(0, 10)
+                        _this.doFindFlight(fromCity.name, fromCity.id, toCity.name, date, resolve)
+                        _this.$Message.warning({
+                            title: '提醒',
+                            content: '所查日期（' + str + '）没有班次信息，拉取明天（' + date + '）的班次信息作为参考',
+                            duration: 10,
+                            closable: true
+                        });
+                        if (_this.flights.columns.length == 7) {
+                            _this.flights.columns.splice(6, 1)
+                        }
+                    } else {
+                        if (_this.flights.columns.length == 6) {
+                            _this.flights.columns.push({ title: '余票', key: 'SAmount' })
+                        }
                     }
                 })
+            }
+
+            prefun().then((value) => {
+                nextfun(value)
+            }).catch()
 
         },
+        doFindFlight(fname, fid, tname, date, resolve) {
+            Util.ajax("/ticket/flight", { params: { to: tname, id: fid, from: fname, date: date } })
+                .then(resp => {
+                    var hasResult = resp.data.Data.length > 0
+                    if (hasResult) {
+                        var data = resp.data.Data
+                        for (var i = 0, len = data.length; i < len; i++) {
+                            var x = data[i]
+                            if (i === 0) {
+                                this.formModel.ticket.schId = x.SchId
+                                x._highlight = true
+                            }
+                            x.DrvTime = x.DrvDateTime.substr(11, 5)
+
+                            if (x.SchTypeName != "固定班") {
+                                if (x.SchTypeName == "流水班") {
+                                    x.DrvTime = x.DrvTime + "前"
+                                } else {
+                                    x.DrvTime = x.DrvTime + x.SchTypeName.substr(0, 2)
+                                }
+                            }
+                        }
+                        this.flights.data = resp.data.Data
+                        this.tableshow = true
+                        if (this.flights.data.length > 3) {
+                            this.tableheight = 175
+                        } else {
+                            this.tableheight = ''
+                        }
+                    }
+                    resolve(hasResult)
+                })
+        }
+        ,
         clear1() {
-            this.ok1 = false
             this.fcs = []
             // clear target city
             this.formModel.ticket.idx2 = ""
@@ -279,9 +341,11 @@ export default {
             this.disabled = true
         },
         clear2() {
-            this.ok2 = false
             this.tcs = []
-            this.formModel.ticket.date = undefined
+            // this.formModel.ticket.date = undefined
+            this.formModel.ticket.schId = ''
+            this.tableshow = false
+            this.tableheight = ''
         },
 
         handleSubmit(name) {
@@ -319,6 +383,9 @@ export default {
                 return
             }
             this.formModel.users.splice(index, 1);
+        },
+        tablechange(currentRow, oldRow) {
+            this.formModel.ticket.schId = currentRow.SchId
         }
     }
 }
