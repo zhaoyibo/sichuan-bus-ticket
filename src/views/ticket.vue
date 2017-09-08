@@ -100,8 +100,8 @@ legend {
                                             <i-input type="text" v-model="item.id" placeholder="身份证号"></i-input>
                                         </i-col>
                                         <!-- <i-col :xs="2" :md="{span: 2, offset: 1}">
-                                                                                                                                                                                                                                            <i-button class="trash-btn" type="ghost" @click="handleRemove(index)" icon="trash-a"></i-button>
-                                                                                                                                                                                                                                        </i-col> -->
+                                                                                                                                                                                                                                                    <i-button class="trash-btn" type="ghost" @click="handleRemove(index)" icon="trash-a"></i-button>
+                                                                                                                                                                                                                                                </i-col> -->
                                     </row>
                                 </form-item>
                                 <i-button type="ghost" style="display: block;" @click="handleAdd" icon="plus-round">新增乘客</i-button>
@@ -110,7 +110,9 @@ legend {
 
                         <div class="form-btns">
                             <i-button type="primary" @click="handleSubmit('formModel')">提交</i-button>
-                            <i-button type="ghost" @click="handleReset('formModel')" style="margin-left: 8px">重置</i-button>
+                            <poptip confirm transfer cancel-text="确认" ok-text="取消" @on-cancel="handleReset('formModel')" title="您确认清空所有内容吗？">
+                                <i-button type="ghost" style="margin-left: 8px">重置</i-button>
+                            </poptip>
                         </div>
                     </tab-pane>
                     <TabPane label="历史订单" name="order-history">
