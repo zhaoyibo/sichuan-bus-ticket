@@ -51,40 +51,42 @@ legend {
             <i-col :xs="22" :sm="20" :md="14" :lg="14">
                 <tabs value="buy-ticket">
                     <tab-pane label="开始抢票" name="buy-ticket">
-                        <i-form ref="formDynamic" :model="formDynamic" :rules="ruleValidate" inline>
+                        <i-form ref="formModel" :model="formModel" :rules="ruleValidate" inline>
                             <fieldset>
-                                <legend>车票信息</legend>
+                                <legend>车票信息{{flights.data.length > 0 ? '（共' + flights.data.length + '个班次）' : ''}}</legend>
                                 <form-item label="出发城市" prop="ticket.idx1">
-                                    <i-select v-model="formDynamic.ticket.idx1" filterable remote clearable @on-change="handleSelect1" :remote-method="ajaxFrom" :loading="loading">
+                                    <i-select v-model="formModel.ticket.idx1" filterable remote clearable @on-change="handleSelect1" :remote-method="ajaxFrom" :loading="loading">
                                         <i-option v-for="(v, k) in fcs" :value="k" :key="v.id+'-'+v.name+'-'+v.pinyin">{{v.name}}</i-option>
                                     </i-select>
                                 </form-item>
                                 <form-item label="到达城市" prop="ticket.idx2">
-                                    <i-select v-model="formDynamic.ticket.idx2" filterable remote clearable @on-change="handleSelect2" :remote-method="ajaxTarget" :loading="loading" :disabled="disabled">
+                                    <i-select v-model="formModel.ticket.idx2" filterable remote clearable @on-change="handleSelect2" :remote-method="ajaxTarget" :loading="loading" :disabled="disabled">
                                         <i-option v-for="(v, k) in tcs" :value="k" :key="v.id+'-'+v.name+'-'+v.pinyin">{{v.name}}</i-option>
                                     </i-select>
                                 </form-item>
                                 <form-item label="选择日期" prop="ticket.date">
-                                    <date-picker v-model="formDynamic.ticket.date" type="date" placeholder="选择日期" :options="afterToday" @on-change="pickDate"></date-picker>
+                                    <date-picker v-model="formModel.ticket.date" type="date" placeholder="选择日期" :options="afterToday" @on-change="pickDate"></date-picker>
                                 </form-item>
+
+                                <i-table v-show="tableshow" :height="tableheight" size="small" highlight-row :columns="flights.columns" :data="flights.data"></i-table>
                             </fieldset>
 
                             <fieldset>
                                 <legend>联系人信息</legend>
                                 <form-item label="姓名" prop="contact.name">
-                                    <i-input v-model="formDynamic.contact.name" type="text"></i-input>
+                                    <i-input v-model="formModel.contact.name" type="text"></i-input>
                                 </form-item>
                                 <form-item label="手机号" prop="contact.phone">
-                                    <i-input v-model="formDynamic.contact.phone" type="text"></i-input>
+                                    <i-input v-model="formModel.contact.phone" type="text"></i-input>
                                 </form-item>
                                 <form-item label="邮箱" prop="contact.email">
-                                    <i-input v-model="formDynamic.contact.email" type="text"></i-input>
+                                    <i-input v-model="formModel.contact.email" type="text"></i-input>
                                 </form-item>
                             </fieldset>
 
                             <fieldset id="fieldset-users">
-                                <legend>乘客信息</legend>
-                                <form-item v-for="(item, index) in formDynamic.users" :key="item.index" :label="'乘客' + (item.index + 1)" :prop="'users.' + item.index">
+                                <legend>乘客信息 x{{formModel.users.length}}</legend>
+                                <form-item v-for="(item, index) in formModel.users" :key="item.index" :label="'乘客' + (item.index + 1)" :prop="'users.' + item.index">
                                     <i-button size="small" class="trash-btn" type="ghost" @click="handleRemove(index)" icon="trash-a"></i-button>
                                     <row>
                                         <i-col :xs="24" :md="8">
@@ -94,17 +96,17 @@ legend {
                                             <i-input type="text" v-model="item.id" placeholder="身份证号"></i-input>
                                         </i-col>
                                         <!-- <i-col :xs="2" :md="{span: 2, offset: 1}">
-                                                                                            <i-button class="trash-btn" type="ghost" @click="handleRemove(index)" icon="trash-a"></i-button>
-                                                                                        </i-col> -->
+                                                                                                                                            <i-button class="trash-btn" type="ghost" @click="handleRemove(index)" icon="trash-a"></i-button>
+                                                                                                                                        </i-col> -->
                                     </row>
                                 </form-item>
-                                <i-button type="dashed" long @click="handleAdd" icon="plus-round">新增乘客</i-button>
+                                <i-button type="ghost" style="display: block;" @click="handleAdd" icon="plus-round">新增乘客</i-button>
                             </fieldset>
                         </i-form>
 
                         <div class="form-btns">
-                            <i-button type="primary" @click="handleSubmit('formDynamic')">提交</i-button>
-                            <i-button type="ghost" @click="handleReset('formDynamic')" style="margin-left: 8px">重置</i-button>
+                            <i-button type="primary" @click="handleSubmit('formModel')">提交</i-button>
+                            <i-button type="ghost" @click="handleReset('formModel')" style="margin-left: 8px">重置</i-button>
                         </div>
                     </tab-pane>
                     <TabPane label="历史订单" name="order-history">
@@ -118,26 +120,34 @@ legend {
 
 <script>
 import axios from 'axios';
+import Util from '../libs/util';
 
 export default {
     data() {
         return {
             ok1: false,
             ok2: false,
+            t: undefined,
             loading: false,
             disabled: true,
-            fcs: [],
+            tableshow: false,
+            tableheight: "",
+            fcs: [{ id: 255, jianpin: "cds", name: "成都市", pinyin: "chengdushi" }],
             tcs: [],
+            flights: {
+                columns: [{ title: '乘车车站', key: 'CarryStaName' }, { title: '发车时间', key: 'DrvTime' }, { title: '里程', key: 'Mile' }, { title: '车型', key: 'BusTypeName' }, { title: '票价', key: 'FullPrice' }],
+                data: []
+            },
             afterToday: {
                 disabledDate(time) {
                     return time.getTime() < Date.now() - 8.64e7;
                 }
             },
-            formDynamic: {
+            formModel: {
                 ticket: {
                     idx1: "",
                     idx2: "",
-                    date: ""
+                    date: ''
                 },
                 contact: {
                     name: "",
@@ -169,51 +179,62 @@ export default {
     },
     methods: {
         ajaxFrom(query) {
-            if (this.ok1) {
-                return
-            }
-            var fc = query.trim();
-            if (fc.length > 0) {
+            query = query.trim();
+            if (query.length > 0) {
                 this.loading = true;
-                var url = "http://127.0.0.1:18087/city";
-                axios.get(url, { params: { f: query } })
-                    .then(resp => {
-                        this.fcs = resp.data;
-                    })
-                setTimeout(() => {
-                    this.loading = false;
-                }, 1000)
-                this.tcs = []
             } else {
+                if (this.t !== undefined) {
+                    clearTimeout(this.t)
+                }
                 this.fcs = []
                 this.loading = false;
+                return
             }
+            if (this.t !== undefined) {
+                clearTimeout(this.t)
+            }
+            this.t = setTimeout(() => {
+                Util.ajax.get("/city", { params: { from: query } })
+                    .then(resp => {
+                        this.fcs = resp.data;
+                        this.loading = false;
+                        this.tcs = []
+                        this.t = undefined
+                    })
+            }, 500)
         },
         ajaxTarget(query) {
-            if (!this.ok2) {
-                query = query.trim();
-                if (query.length > 0) {
-                    this.loading = true;
-                    var url = "http://127.0.0.1:18087/city";
-                    var fromCity = this.fcs[this.formDynamic.ticket.idx1]
-                    axios.get(url, { params: { t: query, i: fromCity.id, f: fromCity.pinyin } })
-                        .then(resp => {
-                            this.tcs = resp.data;
-                        })
-                    setTimeout(() => {
-                        this.loading = false;
-                    }, 1000)
-                } else {
-                    this.tcs = []
-                    this.loading = false;
+            query = query.trim();
+            if (query.length > 0) {
+                this.loading = true;
+            } else {
+                if (this.t !== undefined) {
+                    clearTimeout(this.t)
                 }
+                this.tcs = []
+                this.loading = false;
+                return
             }
+            if (this.t !== undefined) {
+                clearTimeout(this.t)
+            }
+            this.t = setTimeout(() => {
+                var fromCity = this.fcs[this.formModel.ticket.idx1]
+                Util.ajax.get("/city", { params: { to: query, id: fromCity.id, from: fromCity.pinyin } })
+                    .then(resp => {
+                        this.tcs = resp.data;
+                        this.loading = false;
+                        this.t = undefined
+
+                    })
+            }, 500)
         },
         handleSelect1(val) {
             var idx = parseInt(val)
             if (!isNaN(idx)) {
                 this.ok1 = true
                 this.disabled = false
+                console.log(this.formModel)
             } else {
                 this.clear1()
             }
@@ -227,20 +248,40 @@ export default {
             }
         },
         pickDate(date) {
-            // this.formDynamic.ticket.date = date
-            console.log(this.formDynamic)
+            if (date === undefined || date == '') {
+                this.tableshow = false
+                this.tableheight = ''
+                return
+            }
+            var fromCity = this.fcs[this.formModel.ticket.idx1]
+            var url = "/ticket/flight"
+
+            Util.ajax(url, { params: { to: this.tcs[this.formModel.ticket.idx2].name, id: fromCity.id, from: fromCity.name, date: date } })
+                .then(resp => {
+                    var data = resp.data.Data
+                    for (let x of data) {
+                        x.DrvTime = x.DrvDateTime.substr(11, 5)
+                    }
+                    this.flights.data = resp.data.Data
+                    this.tableshow = true
+                    if (this.flights.data.length > 3) {
+                        this.tableheight = 175
+                    }
+                })
+
         },
         clear1() {
             this.ok1 = false
             this.fcs = []
             // clear target city
-            this.formDynamic.ticket.idx2 = ""
+            this.formModel.ticket.idx2 = ""
             this.clear2()
             this.disabled = true
         },
         clear2() {
             this.ok2 = false
             this.tcs = []
+            this.formModel.ticket.date = undefined
         },
 
         handleSubmit(name) {
@@ -256,9 +297,9 @@ export default {
             this.$refs[name].resetFields();
         },
         handleAdd() {
-            var len = this.formDynamic.users.length
-            var index = this.formDynamic.users[len - 1].index + 1
-            this.formDynamic.users.push({
+            var len = this.formModel.users.length
+            var index = this.formModel.users[len - 1].index + 1
+            this.formModel.users.push({
                 index: index,
                 name: '',
                 id: ''
@@ -273,11 +314,11 @@ export default {
             }]
         },
         handleRemove(index) {
-            if (this.formDynamic.users.length == 1) {
+            if (this.formModel.users.length == 1) {
                 this.$Message.error("至少需要一个乘客")
                 return
             }
-            this.formDynamic.users.splice(index, 1);
+            this.formModel.users.splice(index, 1);
         }
     }
 }
