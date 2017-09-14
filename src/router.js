@@ -3,7 +3,7 @@ const routers = [{
     meta: {
         title: '抢车票'
     },
-    component: (resolve) => require(['./views/index.vue'], resolve)
+    component: (resolve) => require(['./views/ticket.vue'], resolve)
 },
 {
     path: '/login',

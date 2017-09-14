@@ -5,6 +5,12 @@
 
 .index {
     text-align: start;
+    padding-top: 20px;
+}
+
+.welcome {
+    padding-bottom: 20px;
+    font-size: 20px;
 }
 
 .form-btns {
@@ -33,12 +39,24 @@ legend {
     /* border-radius: 3px; */
 }
 
+.history-card span {
+    font-size: 12px;
+}
+
+.ivu-spin {
+    display: inline-block;
+}
+
 @media (min-width:767px) {
     .ivu-form-inline .ivu-form-item {
         width: 31%;
     }
-    #fieldset-users .ivu-form-item {
+    #fieldset-passengers .ivu-form-item {
         width: 48%;
+    }
+    .history-card .ivu-card-body p {
+        display: inline-block;
+        width: 40%;
     }
 }
 
@@ -53,26 +71,27 @@ legend {
     <div class="index">
         <row type="flex" justify="center" align="top">
             <i-col :xs="22" :sm="20" :md="15" :lg="15">
-                <tabs value="buy-ticket">
-                    <tab-pane label="开始抢票" name="buy-ticket">
+                <div class="welcome">{{formModel.username}}，欢迎使用</div>
+                <tabs value="buy-ticket" @on-click="handleHistory">
+                    <tab-pane label="开始订票" name="buy-ticket">
                         <i-form ref="formModel" :model="formModel" :rules="ruleValidate" inline>
                             <fieldset>
                                 <legend>车票信息{{flights.data.length > 0 ? '（共' + flights.data.length + '个班次）' : ''}}</legend>
-                                <form-item label="出发城市" prop="ticket.idx1">
-                                    <i-select v-model="formModel.ticket.idx1" filterable remote clearable @on-change="handleSelect1" :remote-method="ajaxFrom" :loading="loading">
+                                <form-item label="出发城市" prop="binding.idx1">
+                                    <i-select v-model="formModel.binding.idx1" filterable remote clearable @on-change="handleSelect1" :remote-method="ajaxFrom" :loading="binding.loading">
                                         <i-option v-for="(v, k) in fcs" :value="k" :key="v.id+'-'+v.name+'-'+v.pinyin">{{v.name}}</i-option>
                                     </i-select>
                                 </form-item>
-                                <form-item label="到达城市" prop="ticket.idx2">
-                                    <i-select v-model="formModel.ticket.idx2" filterable remote clearable @on-change="handleSelect2" :remote-method="ajaxTarget" :loading="loading" :disabled="disabled">
+                                <form-item label="到达城市" prop="binding.idx2">
+                                    <i-select v-model="formModel.binding.idx2" filterable remote clearable @on-change="handleSelect2" :remote-method="ajaxTarget" :loading="binding.loading" :disabled="binding.disabled">
                                         <i-option v-for="(v, k) in tcs" :value="k" :key="v.id+'-'+v.name+'-'+v.pinyin">{{v.name}}</i-option>
                                     </i-select>
                                 </form-item>
-                                <form-item label="选择日期" prop="ticket.date">
-                                    <date-picker v-model="formModel.ticket.date" type="date" placeholder="选择日期" :options="afterToday" @on-change="pickDate"></date-picker>
+                                <form-item label="选择日期" prop="binding.date">
+                                    <date-picker v-model="formModel.binding.date" type="date" placeholder="选择日期" :options="afterToday" @on-change="pickDate"></date-picker>
                                 </form-item>
 
-                                <i-table v-show="tableshow" :height="tableheight" size="small" highlight-row :columns="flights.columns" :data="flights.data" @on-current-change="tablechange" no-data-text="没有班次"></i-table>
+                                <i-table v-show="binding.tableShow" :height="binding.tableHeight" size="small" highlight-row :columns="flights.columns" :data="flights.data" @on-current-change="tableSelect" no-data-text="没有班次"></i-table>
                             </fieldset>
 
                             <fieldset>
@@ -88,9 +107,16 @@ legend {
                                 </form-item>
                             </fieldset>
 
-                            <fieldset id="fieldset-users">
-                                <legend>乘客信息 x{{formModel.users.length}}</legend>
-                                <form-item v-for="(item, index) in formModel.users" :key="item.index" :label="'乘客' + (item.index + 1)" :prop="'users.' + item.index">
+                            <fieldset id="fieldset-passengers">
+                                <legend>乘客信息 x{{formModel.passengers.length}}</legend>
+                                <div>
+                                    常用乘客：
+                                    <checkbox v-model="checkGroup[index]" v-for="(item, index) in userCommon" :key="item.id" @on-change="handleCheck" :true-value="index + 1" :false-value="-(index + 1)">
+                                        <span>{{item.name}}</span>
+                                    </checkbox>
+                                </div>
+
+                                <form-item v-for="(item, index) in formModel.passengers" :key="item.index" :label="'乘客' + (item.index + 1)" :prop="'passengers.' + item.index">
                                     <i-button size="small" class="trash-btn" type="ghost" @click="handleRemove(index)" icon="trash-a"></i-button>
                                     <row>
                                         <i-col :xs="24" :md="8">
@@ -100,8 +126,8 @@ legend {
                                             <i-input type="text" v-model="item.id" placeholder="身份证号"></i-input>
                                         </i-col>
                                         <!-- <i-col :xs="2" :md="{span: 2, offset: 1}">
-                                                                                                                                                                                                                                                    <i-button class="trash-btn" type="ghost" @click="handleRemove(index)" icon="trash-a"></i-button>
-                                                                                                                                                                                                                                                </i-col> -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <i-button class="trash-btn" type="ghost" @click="handleRemove(index)" icon="trash-a"></i-button>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </i-col> -->
                                     </row>
                                 </form-item>
                                 <i-button type="ghost" style="display: block;" @click="handleAdd" icon="plus-round">新增乘客</i-button>
@@ -115,9 +141,50 @@ legend {
                             </poptip>
                         </div>
                     </tab-pane>
-                    <TabPane label="历史订单" name="order-history">
-                        <p>敬请期待</p>
-                    </TabPane>
+                    <tab-pane label="历史订单" name="order-history">
+                        <div v-if="history.length > 0">
+                            <div v-for="(item, index) in history" :key="item.objectId">
+                                <card :bordered="true" class="history-card">
+                                    <p slot="title">
+                                        <icon type="android-bus"></icon> {{item.ticket.fromCity.Name}} - {{item.ticket.toCity.Name}}
+                                        <icon type="android-time"></icon> {{item.ticket.date}}
+                                        <span v-if="item.status == 0" style="color:#2d8cf0;">&nbsp;&nbsp;&nbsp;
+                                            <spin></spin>正在抢票</span>
+                                        <span v-else-if="item.status == 1" style="color:#19be6b;">&nbsp;&nbsp;&nbsp;
+                                            <icon type="checkmark-round"></icon> 已完成</span>
+                                        <span v-else style="color:gray;">&nbsp;&nbsp;&nbsp;
+                                            <icon type="close-round"></icon> 已取消</span>
+                                        <!-- {{item.status == 0 ? "正在抢票中" : item.status == 1 ? "已完成" : "已取消" }} -->
+                                        <poptip confirm transfer cancel-text="确认" ok-text="取消" @on-cancel="handleCancel(index, item.objectId)" title="您确认要取消这个抢票任务吗？">
+                                            <i-button size="small" v-if="item.status == 0" type="text">取消</i-button>
+                                        </poptip>
+                                    </p>
+                                    <a v-if="item.status != 0" href="javascript:void(0)" slot="extra" @click.prevent="handleDelete(index, item.objectId)">
+                                        <icon type="trash-b"></icon>
+                                        删除
+                                    </a>
+                                    <p>
+                                        <b>乘车车站：</b>{{item.scheduleInfo.city}} {{item.scheduleInfo.carryStaName}}
+                                    </p>
+                                    <p>
+                                        <b>终点站：</b>{{item.scheduleInfo.endStaName}}
+                                    </p>
+                                    <p>
+                                        <b>发车时间：</b>{{item.scheduleInfo.drvTime}}
+                                    </p>
+                                    <p>
+                                        <b>里程：</b>{{item.scheduleInfo.mile}}
+                                    </p>
+                                    <p>
+                                        <b>班次类型：</b>{{item.scheduleInfo.schTypeName}}
+                                    </p>
+                                    <p>
+                                        <b>车型：</b>{{item.scheduleInfo.busTypeName}}
+                                    </p>
+                                </card>
+                            </div>
+                        </div>
+                    </tab-pane>
                 </tabs>
             </i-col>
         </row>
@@ -125,76 +192,152 @@ legend {
 </template>
 
 <script>
-import axios from 'axios';
 import Util from '../libs/util';
 
 export default {
     data() {
         return {
             t: undefined,
-            loading: false,
-            disabled: true,
-            tableshow: false,
-            tableheight: "",
-            ok: false,
+            i: undefined,
+            binding: {
+                loading: false,
+                disabled: true,
+                tableShow: false,
+                tableHeight: "",
+            },
             fcs: [{ id: 255, jianpin: "cds", name: "成都市", pinyin: "chengdushi" }],
             tcs: [],
             flights: {
                 columns: [{ title: '乘车车站', key: 'CarryStaName' }, { title: '终点站', key: 'EndStaName' }, { title: '发车时间', key: 'DrvTime' }, { title: '里程', key: 'Mile' }, { title: '车型', key: 'BusTypeName' }, { title: '票价', key: 'FullPrice' }],
                 data: []
             },
+            userCommon: [],
+            checkGroup: [],
+            relMap: {},
             afterToday: {
                 disabledDate(time) {
                     return time.getTime() < Date.now() - 8.64e7;
                 }
             },
             formModel: {
+                username: localStorage.getItem("username"),
+                status: 0,
+                // session: localStorage.getItem("jsessionid"),
+                binding: {
+                    idx1: undefined,
+                    idx2: undefined,
+                    date: undefined,
+                },
                 ticket: {
-                    idx1: "",
-                    idx2: "",
+                    fromCity: {},
+                    toCity: {},
                     date: '',
-                    schId: '',
-                    dateStr: ''
+                    schId: ''
                 },
                 contact: {
                     name: "",
                     phone: "",
                     email: ""
                 },
-                users: [{
+                passengers: [{
                     index: 0,
                     name: "",
                     id: ""
-                }]
+                }],
+                scheduleInfo: {}
             },
             ruleValidate: {
-                "ticket.idx1": [{ type: 'number', required: true, message: '请选择出发城市', trigger: 'change' }],
-                "ticket.idx2": [{ type: 'number', required: true, message: '请选择到达城市', trigger: 'change' }],
-                "ticket.date": [{ required: true, type: 'date', message: '请选择出发日期', trigger: 'change' }],
-                "users.0": [{
-                    required: true, type: 'object',
+                "binding.idx1": [{ type: 'number', required: true, message: '请选择出发城市', trigger: 'change' }],
+                "binding.idx2": [{ type: 'number', required: true, message: '请选择到达城市', trigger: 'change' }],
+                "binding.date": [{ required: true, type: 'date', message: '请选择出发日期', trigger: 'change' }],
+                "passengers.0": [{
+                    required: true, type: 'object', trigger: 'blur',
                     fields: {
-                        name: { type: 'string', message: '请完善乘客1的信息', required: true },
-                        id: { type: 'string', message: '请完善乘客1的信息', required: true }
+                        name: [
+                            { type: 'string', message: '请填写乘客1的姓名', required: true },
+                            { type: 'string', min: 2, max: 10, message: '名字长度应在2-10字符之间' }
+                        ],
+                        id: [
+                            { type: 'string', message: '请填写乘客1的身份证号', required: true },
+                            { pattern: /^(\d{6})(18|19|20)?(\d{2})([01]\d)([0123]\d)(\d{3})(\d|X)$/, message: "请填写正确的身份证号" }
+                        ]
                     }
                 }],
-                "contact.name": [{ required: true, message: '请输入联系人姓名', trigger: 'blur' }],
-                "contact.phone": [{ required: true, message: '请输入联系人手机号', trigger: 'blur' }],
-                "contact.email": [{ required: true, message: '请输入联系人邮件地址', trigger: 'blur' }],
-            }
+                "contact.name": [
+                    { required: true, message: '请填写联系人姓名', trigger: 'blur' },
+                    { type: 'string', min: 2, max: 10, message: '名字长度应在2-10字符之间', trigger: 'blur' }
+                ],
+                "contact.phone": [
+                    { required: true, message: '请填写联系人手机号', trigger: 'blur' },
+                    { pattern: /^(13[0-9]|14[579]|15[0-3,5-9]|17[0135678]|18[0-9])\d{8}$/, message: '请填写正确的手机号码', trigger: 'blur' }
+                ],
+                "contact.email": [
+                    { required: true, message: '请填写联系人邮件地址', trigger: 'blur' },
+                    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+                ],
+            },
+            history: []
+        }
+    },
+    created() {
+        let session = localStorage.getItem('jsessionid') || ''
+        if (session != '') {
+            Util.ajax.get("/user/login", { params: { session: session } })
+                .then(resp => {
+                    // console.log(resp)
+                    this.i = setInterval(() => {
+                        Util.ajax.get("/user/login", { params: { session: session } })
+                            .catch(error => {
+                                this.$router.push({ path: "/login" })
+                            })
+                    }, 60000)
+                })
+                .catch(error => {
+                    // console.log(error.response.status)
+                    switch (error.response.status) {
+                        case 400:
+                            break;
+                        case 401:
+                            localStorage.removeItem('jsessionid')
+                            break;
+                        case 500:
+                            //todo
+                            break;
+                            this.$router.push({ path: "/login" })
+                    }
+                })
+
+            Util.ajax.get("/ticket/" + this.formModel.username + "/history")
+                .then(resp => {
+                    this.history = resp.data
+                })
+                .catch(error => {
+                    console.log(error)
+                })
+            Util.ajax.get("/user/contact", { params: { session: session } })
+                .then(resp => {
+                    console.log(resp.data)
+                    this.formModel.contact = resp.data.contact
+                    this.userCommon = resp.data.passengers
+                })
+                .catch(error => {
+                    console.log(error)
+                })
+        } else {
+            this.$router.push({ path: "/login" })
         }
     },
     methods: {
         ajaxFrom(query) {
             query = query.trim();
             if (query.length > 0) {
-                this.loading = true;
+                this.binding.loading = true;
             } else {
                 if (this.t) {
                     clearTimeout(this.t)
                 }
                 this.fcs = []
-                this.loading = false;
+                this.binding.loading = false;
                 this.clear1()
                 return
             }
@@ -205,7 +348,7 @@ export default {
                 Util.ajax.get("/city", { params: { from: query } })
                     .then(resp => {
                         this.fcs = resp.data;
-                        this.loading = false;
+                        this.binding.loading = false;
                         this.tcs = []
                         this.t = undefined
                     })
@@ -214,13 +357,13 @@ export default {
         ajaxTarget(query) {
             query = query.trim();
             if (query.length > 0) {
-                this.loading = true;
+                this.binding.loading = true;
             } else {
                 if (this.t) {
                     clearTimeout(this.t)
                 }
                 this.tcs = []
-                this.loading = false;
+                this.binding.loading = false;
                 this.clear2()
                 return
             }
@@ -228,40 +371,45 @@ export default {
                 clearTimeout(this.t)
             }
             this.t = setTimeout(() => {
-                var fromCity = this.fcs[this.formModel.ticket.idx1]
+                let fromCity = this.formModel.ticket.fromCity
                 Util.ajax.get("/city", { params: { to: query, id: fromCity.id, from: fromCity.pinyin } })
                     .then(resp => {
                         this.tcs = resp.data;
-                        this.loading = false;
+                        this.binding.loading = false;
                         this.t = undefined
 
                     })
             }, 500)
         },
         handleSelect1(val) {
-            this.disabled = false
+            this.binding.disabled = false
+            this.formModel.ticket.fromCity = this.fcs[val]
         },
         handleSelect2(val) {
+            this.formModel.ticket.toCity = this.tcs[val]
             this.findFlight()
         },
         pickDate(str) {
             if (!str) {
-                this.tableshow = false
-                this.tableheight = ''
-                this.formModel.ticket.schId = ''
+                this.binding.tableShow = false
+                this.binding.tableHeight = ''
                 this.flights.data = []
+                this.formModel.ticket.schId = ""
+                this.formModel.scheduleInfo = {}
                 return
             }
-            this.formModel.ticket.dateStr = str
+            this.formModel.ticket.date = str
             this.findFlight(str)
+            console.log(this.formModel)
         },
         findFlight(str) {
-            str = str || this.formModel.ticket.dateStr
+            str = str || this.formModel.ticket.date
             if (!str) {
                 return
             }
-            var fromCity = this.fcs[this.formModel.ticket.idx1], toCity = this.tcs[this.formModel.ticket.idx2]
+            let fromCity = this.formModel.ticket.fromCity, toCity = this.formModel.ticket.toCity
             if (!fromCity || !toCity) {
+                console.log("from city or to city is empty")
                 return
             }
 
@@ -275,9 +423,9 @@ export default {
             let nextfun = function(prevalue) {
                 return new Promise(function(resolve, reject) {
                     if (!prevalue) {
-                        var now = new Date()
+                        let now = new Date()
                         now.setDate(now.getDate() + 1)
-                        var date = now.toISOString().substr(0, 10)
+                        let date = now.toISOString().substr(0, 10)
                         _this.doFindFlight(fromCity.name, fromCity.id, toCity.name, date, resolve)
                         _this.$Message.warning({
                             title: '提醒',
@@ -304,13 +452,14 @@ export default {
         doFindFlight(fname, fid, tname, date, resolve) {
             Util.ajax("/ticket/flight", { params: { to: tname, id: fid, from: fname, date: date } })
                 .then(resp => {
-                    var hasResult = resp.data.Data.length > 0
+                    let hasResult = resp.data.Data.length > 0
                     if (hasResult) {
-                        var data = resp.data.Data
-                        for (var i = 0, len = data.length; i < len; i++) {
-                            var x = data[i]
+                        let data = resp.data.Data
+                        for (let i = 0, len = data.length; i < len; i++) {
+                            let x = data[i]
                             if (i === 0) {
                                 this.formModel.ticket.schId = x.SchId
+                                this.formModel.scheduleInfo = x
                                 x._highlight = true
                             }
                             x.DrvTime = x.DrvDateTime.substr(11, 5)
@@ -324,11 +473,11 @@ export default {
                             }
                         }
                         this.flights.data = resp.data.Data
-                        this.tableshow = true
+                        this.binding.tableShow = true
                         if (this.flights.data.length > 3) {
-                            this.tableheight = 175
+                            this.binding.tableHeight = 175
                         } else {
-                            this.tableheight = ''
+                            this.binding.tableHeight = ''
                         }
                     }
                     resolve(hasResult)
@@ -337,22 +486,45 @@ export default {
         ,
         clear1() {
             this.fcs = []
+            this.formModel.ticket.fromCity = {}
             // clear target city
-            this.formModel.ticket.idx2 = ""
+            this.formModel.binding.idx2 = ""
             this.clear2()
-            this.disabled = true
+            this.binding.disabled = true
         },
         clear2() {
             this.tcs = []
+            this.formModel.ticket.toCity = {}
             // this.formModel.ticket.date = undefined
-            this.formModel.ticket.schId = ''
-            this.tableshow = false
-            this.tableheight = ''
+            this.binding.tableShow = false
+            this.binding.tableHeight = ''
+            this.formModel.ticket.schId = ""
+            this.formModel.scheduleInfo = {}
         },
 
         handleSubmit(name) {
             this.$refs[name].validate((valid) => {
                 if (valid) {
+                    let data = {
+                        task: this.formModel
+                    }
+                    Util.ajax.post('/ticket', data)
+                        .then(resp => {
+                            console.log(resp)
+                            this.history.unshift(this.formModel)
+                        })
+                        .catch(error => {
+                            switch (error.response.status) {
+                                case 403:
+                                    this.$Message.error('非法操作!');
+                                    localStorage.clear()
+                                    this.$router.push({ path: "/login" })
+                                    break
+                                case 400:
+                                    this.$Message.error('请求有误，请刷新重试!');
+                                    break
+                            }
+                        })
                     this.$Message.success('提交成功!');
                 } else {
                     this.$Message.error('表单验证失败!');
@@ -363,32 +535,129 @@ export default {
             this.$refs[name].resetFields();
         },
         handleAdd() {
-            var len = this.formModel.users.length
-            var index = this.formModel.users[len - 1].index + 1
-            this.formModel.users.push({
-                index: index,
-                name: '',
-                id: ''
-            });
-            var key = 'users.' + index
-            this.ruleValidate[key] = [{
-                required: true, type: 'object',
-                fields: {
-                    name: { type: 'string', message: '请完善乘客' + (index + 1) + '的信息', required: true },
-                    id: { type: 'string', message: '请完善乘客' + (index + 1) + '的信息', required: true }
+            let len = this.formModel.passengers.length
+            if (len >= 5) {
+                this.$Message.error("一次最多添加5位乘客")
+                return
+            }
+            this.$refs["formModel"].validate((valid) => {
+                if (!valid) {
+                    this.$Message.error("请先完善信息")
+                } else {
+                    let index = this.formModel.passengers[len - 1].index + 1
+                    this.formModel.passengers.push({
+                        index: index,
+                        name: '',
+                        id: ''
+                    });
+                    let key = 'passengers.' + index
+
+                    this.ruleValidate[key] = [{
+                        required: true, type: 'object', trigger: 'blur',
+                        fields: {
+                            name: [
+                                { type: 'string', message: '请填写乘客' + (index + 1) + '的姓名', required: true },
+                                { type: 'string', min: 2, max: 10, message: '名字长度应在2-10字符之间' }
+                            ],
+                            id: [
+                                { type: 'string', message: '请填写乘客' + (index + 1) + '的身份证号', required: true },
+                                { pattern: /^(\d{6})(18|19|20)?(\d{2})([01]\d)([0123]\d)(\d{3})(\d|X)$/, message: "请填写正确的身份证号" }
+                            ]
+                        }
+                    }]
                 }
-            }]
+            })
+
+
+
         },
         handleRemove(index) {
-            if (this.formModel.users.length == 1) {
+            if (this.formModel.passengers.length == 1) {
                 this.$Message.error("至少需要一个乘客")
                 return
             }
-            this.formModel.users.splice(index, 1);
+            // console.log("remove before", this.relMap)
+            let p = this.formModel.passengers[index]
+            this.formModel.passengers.splice(index, 1);
+            for (let k in this.relMap) {
+                if (this.relMap[k] === p.index) {
+                    this.checkGroup[k] = 0 - this.checkGroup[k]
+                    delete this.relMap[k]
+                }
+            }
+            // console.log("remove after", this.relMap)
         },
-        tablechange(currentRow, oldRow) {
+        tableSelect(currentRow, oldRow) {
             this.formModel.ticket.schId = currentRow.SchId
+            this.formModel.scheduleInfo = currentRow
+            // console.log(this.formModel)
+        },
+        handleHistory(name) {
+            if (name == "order-history") {
+
+            }
+        },
+        handleCancel(index, id) {
+            // console.log(id)
+            Util.ajax.delete("/ticket/" + id)
+                .then(resp => {
+                    // console.log(resp.data)
+                    this.history[index].status = 2
+                })
+                .catch(error => {
+                    console.log(error)
+                })
+        },
+        handleDelete(index, id) {
+
+        },
+        handleCheck(index) {
+            // console.log(index)
+            if (index > 0) {
+                let i = index - 1
+                let len = this.formModel.passengers.length
+                if (len >= 5) {
+                    this.$Message.error("一次最多添加5位乘客")
+                    return
+                }
+                let p = this.userCommon[i]
+                let id = p.id + ''
+                let pi
+                if (!this.formModel.passengers[0].name) {
+                    let p0 = this.formModel.passengers[0]
+                    p0.name = p.name
+                    p0.id = id
+                    pi = 0
+                } else {
+                    pi = this.formModel.passengers[len - 1].index + 1
+                    let pn = { index: pi, name: p.name, id: id }
+                    this.formModel.passengers.push(pn)
+                }
+                this.relMap[i] = pi
+                // console.log("check check", this.relMap, this.formModel.passengers)
+            } else {
+                let i = (0 - index) - 1
+                let pi = this.relMap[i]
+                let len = this.formModel.passengers.length
+                for (let j in this.formModel.passengers) {
+                    if (pi === this.formModel.passengers[j].index) {
+                        if (len == 1) {
+                            this.formModel.passengers[0].index = 0
+                            this.formModel.passengers[0].name = ''
+                            this.formModel.passengers[0].id = ''
+                        } else {
+                            this.formModel.passengers.splice(j, 1);
+                        }
+                        delete this.relMap[i]
+                    }
+                }
+                // console.log("check uncheck", this.relMap, this.formModel.passengers)
+            }
         }
+    },
+    destroyed() {
+        clearTimeout(this.t)
+        clearInterval(this.i)
     }
 }
 </script>
