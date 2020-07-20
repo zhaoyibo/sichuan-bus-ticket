@@ -1,23 +1,27 @@
-import axios from 'axios';
-import env from '../config/env';
+import axios from 'axios'
+import dateformat from 'dateformat-util'
 
 let util = {
 
-};
-util.title = function(title) {
-    title = title ? title : 'Bus Ticket';
-    window.document.title = title;
-};
+}
+let env = process.env.NODE_ENV
 
-const ajaxUrl = env === 'development' ?
-    'http://127.0.0.1:8089' :
-    env === 'production' ?
-    'https://www.url.com' :
-    'https://debug.url.com';
+util.title = function (title) {
+  title = title || 'Bus Ticket'
+  window.document.title = title
+}
+
+const ajaxUrl = env === 'development'
+  ? 'http://127.0.0.1:8089/api/scbus'
+  : env === 'production'
+    ? 'https://ideassea.com/api/scbus'
+    : 'http://127.0.0.1:8089/api/scbus'
 
 util.ajax = axios.create({
-    baseURL: ajaxUrl,
-    timeout: 30000
-});
+  baseURL: ajaxUrl,
+  timeout: 30000
+})
 
-export default util;
+util.dateformat = dateformat
+
+export default util

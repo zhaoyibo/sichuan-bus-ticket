@@ -1,3 +1,21 @@
-# sc-bus-ticket
-某个省汽车票订票助手的前端页面
-使用 vue 写的，之前没怎么接触过前端部分，比葫芦画瓢，够用就好
+# scbus
+
+> sichuan bus ticket helper
+
+## Build Setup
+
+``` bash
+# install dependencies
+npm install
+
+# serve with hot reload at localhost:8080
+npm run dev
+
+# build for production with minification
+npm run build
+
+# build for production and view the bundle analyzer report
+npm run build --report
+```
+
+For detailed explanation on how things work, checkout the [guide](http://vuejs-templates.github.io/webpack/) and [docs for vue-loader](http://vuejs.github.io/vue-loader).
