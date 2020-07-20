@@ -1,6 +1,5 @@
-# scbus
 
-> sichuan bus ticket helper
+> 四川汽车票订票助手 前端页面
 
 ## Build Setup
 
